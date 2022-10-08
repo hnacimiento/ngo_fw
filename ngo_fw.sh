@@ -140,7 +140,7 @@ if [ $OPTS = "install" ]; then
       echo -e "\nexit" >> /etc/rc.local
       sed -i "\$i /bin/bash /usr/local/bin/ngo_fw.sh loadatboot\n" /etc/rc.local
     exit
- 
+   fi
     cat <(crontab -l) <(echo "@daily  root  cpulimit -z -l 20 /usr/local/bin/$SCRIPT_NAME &") | crontab -
 
     if [ -f /etc/init.d/rsyslog ]; then
@@ -171,7 +171,6 @@ if [ $OPTS = "install" ]; then
   echo -e "\nPre-req is installed!"
   exit 0
 fi
-
 #---------------------------------------------------------------------------
 # FUNCTIONS
 #---------------------------------------------------------------------------
