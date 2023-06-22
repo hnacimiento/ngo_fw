@@ -239,7 +239,7 @@ loadblacklist () {
     echo "-- loading $BL_NAME from $BL_FILE"
 
     # strip comments - mac address and ipv6 not supported yet so strip :
-    awk '{print $1}' $BL_FILE | cut -d\; -f1 | cut -d\, -f1 | grep -Ev "^#|^ *$|:" | sed -e "s/[^0-9\.\/]//g" | grep -E "^[0-9]" > ${BL_FILE}.filtered
+    grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+)?' $BL_FILE > ${BL_FILE}.filtered
     echo "-- loading $BL_NAME - `wc -l ${BL_FILE}.filtered` entries"
 
     for ip in `cat ${BL_FILE}.filtered`; do
