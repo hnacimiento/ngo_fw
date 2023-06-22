@@ -232,7 +232,7 @@ loadblacklist () {
   BL_FILE="$BL_DIR/$BL_NAME.txt"
   if [ ! -f "$BL_FILE" ] || [ $(date +%s -r "$BL_FILE") -lt $(date +%s --date="$BL_AGE") ]; then
     echo "-- getting fresh $BL_NAME from $BL_URL"
-    wget -q -t 2 --output-document=$BL_FILE $BL_URL
+    wget -q -t 2 --output-document=$BL_FILE $BL_URL --no-check-certificate
   fi
   
   if [ -f "$BL_FILE" ]; then
@@ -482,8 +482,8 @@ loadblacklist \
    "https://blocklist.greensnow.co/greensnow.txt"
 
 loadblacklist \
-  "badips" \
-  "http://www.badips.com/get/list/ssh/2"
+  "nubi" \
+  "https://www.nubi-network.com/list.txt"
 
 loadblacklist \
       "ci-army-malcious" \
@@ -495,29 +495,43 @@ loadblacklist \
 
 loadblacklist \
       "torexitnodes" \
-        "https://check.torproject.org/cgi-bin/TorBulkExitList.py?ip=1.1.1.1"
+        "https://check.torproject.org/torbulkexitlist"
 
 loadblacklist \
       "spamhaus-org-lasso" \
         "http://www.spamhaus.org/drop/drop.lasso"
 
-#
-# bot nets
-#
-# https://palevotracker.abuse.ch/blocklists.php
-##loadblacklist \
-##  "palevotracker-abuse-ch" \
-##  "https://palevotracker.abuse.ch/blocklists.php?download=ipblocklist"
 
-# https://spyeyetracker.abuse.ch/blocklist.php
-##loadblacklist \
-##  "spyeyetracker-abuse-ch" \
-##  "https://spyeyetracker.abuse.ch/blocklist.php?download=ipblocklist"
+loadblacklist \
+      "alienvault-reputation" \
+        "https://reputation.alienvault.com/reputation.generic"
 
-# https://zeustracker.abuse.ch/blocklist.php
+loadblacklist \
+      "pfBlockerNG-malicious-threats-bbcan177_ms1" \
+        "https://gist.githubusercontent.com/BBcan177/bf29d47ea04391cb3eb0/raw"
+
+loadblacklist \
+      "pfBlockerNG-malicious-threats-bbcan177_ms3" \
+        "https://gist.githubusercontent.com/BBcan177/d7105c242f17f4498f81/raw"
+
+loadblacklist \
+      "haley-ssh" \
+        "http://charles.the-haleys.org/ssh_dico_attack_hdeny_format.php/hostsdeny.txt"
+
+
+#
+# bot nets DNS
+#
+
+# https://dbl.oisd.nl/
 ##loadblacklist \
-##  "zeustracker-abuse-ch-badips" \
-##  "https://zeustracker.abuse.ch/blocklist.php?download=badips"
+##  "dbl-oisd-nl" \
+##  "https://dbl.oisd.nl"
+
+# https://phishing.army
+##loadblacklist \
+##  "phishing-army-blocklist" \
+##  "https://phishing.army/download/phishing_army_blocklist_extended.txt"
 
 
 #
