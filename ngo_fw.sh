@@ -228,20 +228,19 @@ blacklistit () {
 loadblacklist () {
   BL_NAME=$1
   BL_URL=$2
-
   BL_FILE="$BL_DIR/$BL_NAME.txt"
+
   if [ ! -f "$BL_FILE" ] || [ $(date +%s -r "$BL_FILE") -lt $(date +%s --date="$BL_AGE") ]; then
     echo "-- getting fresh $BL_NAME from $BL_URL"
     wget -q -t 2 --output-document=$BL_FILE $BL_URL --no-check-certificate
   fi
-  
+
   if [ -f "$BL_FILE" ]; then
     echo "-- loading $BL_NAME from $BL_FILE"
-
     # strip comments - mac address and ipv6 not supported yet so strip :
     grep -Eo '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+)?' $BL_FILE > ${BL_FILE}.filtered
     echo "-- loading $BL_NAME - `wc -l ${BL_FILE}.filtered` entries"
-
+    
     for ip in `cat ${BL_FILE}.filtered`; do
       blacklistit $ip $BL_NAME
     done
@@ -520,28 +519,13 @@ loadblacklist \
 
 
 #
-# bot nets DNS
-#
-
-# https://dbl.oisd.nl/
-##loadblacklist \
-##  "dbl-oisd-nl" \
-##  "https://dbl.oisd.nl"
-
-# https://phishing.army
-##loadblacklist \
-##  "phishing-army-blocklist" \
-##  "https://phishing.army/download/phishing_army_blocklist_extended.txt"
-
-
-#
 # special cases, custom formats blacklist
+# COLUMNS with range subnets
 #
-
 # Obtain List of badguys from dshield.org
 # https://isc.sans.edu/feeds_doc.html
   BL_NAME="dshield.org-top-20"
-  BL_URL="http://feeds.dshield.org/block.txt"
+  BL_URL="https://feeds.dshield.org/block.txt"
 
 function convert {
  while read line; do
@@ -554,7 +538,7 @@ function convert {
   BL_FILE="$BL_DIR/$BL_NAME.txt"
   if [ ! -f "$BL_FILE" ] || [ $(date +%s -r "$BL_FILE") -lt $(date +%s --date="$BL_AGE") ]; then
     echo "-- getting fresh $BL_NAME from $BL_URL"
-    wget -q -t 2 --output-document=$BL_FILE $BL_URL
+    wget -q -t 2 --output-document=$BL_FILE $BL_URL --no-check-certificate
   fi
   
   if [ -f "$BL_FILE" ]; then
@@ -563,6 +547,7 @@ function convert {
       blacklistit $net $BL_NAME
     done
   fi
+ 
 
 
 # swap in the new sets.
