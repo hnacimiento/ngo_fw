@@ -53,6 +53,11 @@ else
   exec > $BL_DIR/ngo_fw.out 2>&1
 fi
 
+if [ $OPTS = "dynamicadmins" ]; then
+  dynamicwhitelist
+  exit 0
+fi
+
 if [ $OPTS = "installpsad" ]; then
   clear
     echo "Installing PSAD"
@@ -175,6 +180,7 @@ if [ $OPTS = "install" ]; then
   echo -e "\nPre-req is installed!"
   exit 0
 fi
+
 #---------------------------------------------------------------------------
 # FUNCTIONS
 #---------------------------------------------------------------------------
@@ -395,39 +401,36 @@ if [ $OPTS = "loadatboot" ]; then
   exit 0
 fi
 
-
 dynamicwhitelist () {
+  # Empty the file
+  > $DYNAMIC_FILE
 
-# Empty the file
-> $DYNAMIC_FILE
+  # Read the hosts from the file and resolve the IPs
+  while IFS= read -r host
+  do
+      host $host | awk '/address/ {print $NF";"}' >> $DYNAMIC_FILE
+  done < "$HOSTS_FILE"
 
-# Read the hosts from the file and resolve the IPs
-while IFS= read -r host
-do
-    host $host | awk '/address/ {print $NF";"}' >> $DYNAMIC_FILE
-done < "$HOSTS_FILE"
+  # Create the Last_Dynamic_Host_Admins.txt file if it does not exist
+  if [ ! -f $LAST_DYNAMIC_FILE ]; then
+      touch $LAST_DYNAMIC_FILE
+  fi
 
-# Create the Last_Dynamic_Host_Admins.txt file if it does not exist
-if [ ! -f $LAST_DYNAMIC_FILE ]; then
-    touch $LAST_DYNAMIC_FILE
-fi
+  # Read the old IPs from Dynamic_Host_Admins.txt
+  OLD_IPS=$(cat $LAST_DYNAMIC_FILE)
 
-# Read the old IPs from Dynamic_Host_Admins.txt
-OLD_IPS=$(cat $LAST_DYNAMIC_FILE)
+  # Read the current IPs from Dynamic_Host_Admins.txt
+  CURRENT_IPS=$(cat $DYNAMIC_FILE)
 
-# Read the current IPs from Dynamic_Host_Admins.txt
-CURRENT_IPS=$(cat $DYNAMIC_FILE)
+  # Remove old IPs from whitelist.txt
+  grep -Fvxf $LAST_DYNAMIC_FILE $WHITELIST_FILE > temp && mv temp $WHITELIST_FILE
 
-# Remove old IPs from whitelist.txt
-grep -Fvxf $LAST_DYNAMIC_FILE $WHITELIST_FILE > temp && mv temp $WHITELIST_FILE
+  # Add the current IPs to whitelist.txt
+  grep -Fxvf $WHITELIST_FILE $DYNAMIC_FILE >> $WHITELIST_FILE
 
-# Add the current IPs to whitelist.txt
-grep -Fxvf $WHITELIST_FILE $DYNAMIC_FILE >> $WHITELIST_FILE
-
-# Update Last_Dynamic_Host_Admins.txt with the current IPs
-echo "$CURRENT_IPS" > $LAST_DYNAMIC_FILE
+  # Update Last_Dynamic_Host_Admins.txt with the current IPs
+  echo "$CURRENT_IPS" > $LAST_DYNAMIC_FILE
 }
-
 
 #---------------------------------------------------------------------------
 # MAIN
@@ -571,8 +574,6 @@ function convert {
   awk '/[^0-9]/ { printf "%s/%s\n",$1,$3 }'
  done
 }
-
-   #curl $BL_URL | dos2unix | grep -E "^[1-9]" | convert
 
   BL_FILE="$BL_DIR/$BL_NAME.txt"
   if [ ! -f "$BL_FILE" ] || [ $(date +%s -r "$BL_FILE") -lt $(date +%s --date="$BL_AGE") ]; then
