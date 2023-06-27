@@ -17,6 +17,10 @@
 SCRIPT_NAME=`basename ${BASH_SOURCE[0]}` #Script File Name
 HOST_NAME=`uname -n` #hostname
 BL_DIR="/var/lib/ngo_fw" # Where we keep some files.
+WHITELIST_FILE="$BL_DIR/whitelist.txt"
+DYNAMIC_FILE="$BL_DIR/Dynamic_Host_Admins.txt"
+HOSTS_FILE="$BL_DIR/whitelist_hosts.txt"
+LAST_DYNAMIC_FILE="$BL_DIR/Last_Dynamic_Host_Admins.txt"
 # Default syslog messages priority and tag.
 LOG_PRI="local0.notice"
 LOG_TAG="[$SCRIPT_NAME]"
@@ -123,7 +127,7 @@ if [ $OPTS = "install" ]; then
     echo -e "touch $BL_DIR/{whitelist.txt,blacklist.txt}\n"
     touch $BL_DIR/{whitelist.txt,blacklist.txt}
       if [[ $WL_IP != "" ]]; then
-        echo "$WL_IP" > $BL_DIR/whitelist.txt
+        echo "$WL_IP" > $WHITELIST_FILE
       else
         echo "Nothing to do on whitelist.txt"
       fi
@@ -251,7 +255,7 @@ loadblacklist () {
 loadcustomwhitelist () {
 # load fresh white list each time as the list should be small.
 ipset flush whitelist_ips_n
-WL_CUSTOM="$BL_DIR/whitelist.txt"
+WL_CUSTOM="$WHITELIST_FILE"
 count=0
 if [ -f "$WL_CUSTOM" ]; then
   for ip in `grep -Ev "^#|^ *$" $WL_CUSTOM | sed -e "s/#.*$//" -e "s/[^.0-9\/]//g"`; do
@@ -390,6 +394,41 @@ if [ $OPTS = "loadatboot" ]; then
   echo -e "\nConfigure IPTABLES done"
   exit 0
 fi
+
+
+dynamicwhitelist () {
+
+# Empty the file
+> $DYNAMIC_FILE
+
+# Read the hosts from the file and resolve the IPs
+while IFS= read -r host
+do
+    host $host | awk '/address/ {print $NF";"}' >> $DYNAMIC_FILE
+done < "$HOSTS_FILE"
+
+# Create the Last_Dynamic_Host_Admins.txt file if it does not exist
+if [ ! -f $LAST_DYNAMIC_FILE ]; then
+    touch $LAST_DYNAMIC_FILE
+fi
+
+# Read the old IPs from Dynamic_Host_Admins.txt
+OLD_IPS=$(cat $LAST_DYNAMIC_FILE)
+
+# Read the current IPs from Dynamic_Host_Admins.txt
+CURRENT_IPS=$(cat $DYNAMIC_FILE)
+
+# Remove old IPs from whitelist.txt
+grep -Fvxf $LAST_DYNAMIC_FILE $WHITELIST_FILE > temp && mv temp $WHITELIST_FILE
+
+# Add the current IPs to whitelist.txt
+grep -Fxvf $WHITELIST_FILE $DYNAMIC_FILE >> $WHITELIST_FILE
+
+# Update Last_Dynamic_Host_Admins.txt with the current IPs
+echo "$CURRENT_IPS" > $LAST_DYNAMIC_FILE
+}
+
+
 #---------------------------------------------------------------------------
 # MAIN
 #---------------------------------------------------------------------------
