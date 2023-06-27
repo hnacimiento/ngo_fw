@@ -343,6 +343,16 @@ if [ $OPTS = "whitelist" ]; then
   ipset create whitelist_ips_n hash:ip hashsize 4096 maxelem 262144 2> /dev/null
   loadcustomwhitelist
   ipset swap whitelist_ips_n whitelist_ips
+
+# Check if IP is in whitelist and delete from blacklist_ips
+  while read -r IP; do
+    # Check if IP is in whitelist and delete from blacklist_ips
+    ip_in_whitelist=$(ipset test whitelist_ips $IP 2> /dev/null)
+    if [ -n "$ip_in_whitelist" ]; then
+      ipset del blacklist_ips $IP
+    fi
+  done < "$WHITELIST_FILE"
+
   ipset destroy whitelist_ips_n
   ipset save whitelist_ips  > $BL_DIR/whitelist_ips.sav
   echo -e "\nWhitelist is reloaded"
