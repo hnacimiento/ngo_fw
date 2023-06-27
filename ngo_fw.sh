@@ -588,8 +588,6 @@ function convert {
     done
   fi
  
-
-
 # swap in the new sets.
 ipset swap blacklist_ips_n blacklist_ips
 ipset swap blacklist_nets_n blacklist_nets
