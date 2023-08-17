@@ -14,6 +14,7 @@
 # an output file.
 #
 #---------------------------------------------------------------------------
+#PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SCRIPT_NAME=`basename ${BASH_SOURCE[0]}` #Script File Name
 HOST_NAME=`uname -n` #hostname
 BL_DIR="/var/lib/ngo_fw" # Where we keep some files.
