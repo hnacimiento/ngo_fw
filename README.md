@@ -11,6 +11,10 @@ do some real work of finding legitimate and directed attacks to your servers.
 NOTE: Some hosting companies will shutdown your VPS server if you use more than .9 load.
 So we recommending using **cpulimit** to invoke ngo_fw.sh
 
+If you encounter the error "ERROR: You must install 'ipset'" in the ngo_fw.out file when
+executed from the crontab, please add your environment path to the ngo_fw.sh script.
+
+
 `cpulimit -l 20 /usr/local/bin/ngo_fw.sh`
 
 ## Requires
