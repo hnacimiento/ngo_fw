@@ -19,9 +19,9 @@ SCRIPT_NAME=`basename ${BASH_SOURCE[0]}` #Script File Name
 HOST_NAME=`uname -n` #hostname
 BL_DIR="/var/lib/ngo_fw" # Where we keep some files.
 WHITELIST_FILE="$BL_DIR/whitelist.txt"
-DYNAMIC_FILE="$BL_DIR/Dynamic_Host_Admins.txt"
-HOSTS_FILE="$BL_DIR/whitelist_hosts.txt"
-LAST_DYNAMIC_FILE="$BL_DIR/Last_Dynamic_Host_Admins.txt"
+ADMINS_FILE="$BL_DIR/dynamic_dns_admins.txt"
+TEMP_WHITELIST_FILE="$BL_DIR/temp_whitelist_update.list"
+PREVIOUS_IP_FILE="$BL_DIR/previous_ip.list"
 # Default syslog messages priority and tag.
 LOG_PRI="local0.notice"
 LOG_TAG="[$SCRIPT_NAME]"
@@ -332,6 +332,7 @@ fi
 # Only reload whitelist
 if [ $OPTS = "whitelist" ]; then
   echo -e "\nWhitelist is reloading"
+  dynamicwhitelist
   if ! ipset list whitelist_ips > /dev/null 2>&1
   then
     echo "-- creating whitelist_ips ipset as does not exist."
@@ -413,34 +414,56 @@ if [ $OPTS = "loadatboot" ]; then
 fi
 
 dynamicwhitelist () {
-  # Empty the file
-  > $DYNAMIC_FILE
 
-  # Read the hosts from the file and resolve the IPs
-  while IFS= read -r host
-  do
-      host $host | awk '/address/ {print $NF";"}' >> $DYNAMIC_FILE
-  done < "$HOSTS_FILE"
+  function check_and_prepare_file {
+      local file="$1"
+      #Create file if it doesn't exist
+      if [ ! -f "$file" ]; then
+          touch "$file"
+      else
+          # Ensure the file ends with a newline
+          sed -i -e '$a\' "$file"
+      fi
+  }
+  # Use the function for each file
+  check_and_prepare_file "$PREVIOUS_IP_FILE"
+  check_and_prepare_file "$TEMP_WHITELIST_FILE"
+  check_and_prepare_file "$ADMINS_FILE"
 
-  # Create the Last_Dynamic_Host_Admins.txt file if it does not exist
-  if [ ! -f $LAST_DYNAMIC_FILE ]; then
-      touch $LAST_DYNAMIC_FILE
-  fi
+  cp "$WHITELIST_FILE" "$TEMP_WHITELIST_FILE"
 
-  # Read the old IPs from Dynamic_Host_Admins.txt
-  OLD_IPS=$(cat $LAST_DYNAMIC_FILE)
+  # Update the dynamic IPs
+  IFS=""
+  while read -r admin; do
+      ip=$(dig +short "$admin" | grep -Eo '([0-9]{1,3}\.){3}[0-9]{1,3}')
+      if [[ -f "$PREVIOUS_IP_FILE" ]]; then
+          previous_ips=$(grep "$admin" "$PREVIOUS_IP_FILE" | cut -d ' ' -f2)
+          # Loop through each previous IP and handle them separately
+          for previous_ip in $previous_ips; do
+              if [[ "$ip" != "$previous_ip" ]]; then
+                  sed -i "/$previous_ip/d" "$TEMP_WHITELIST_FILE"
+                  sed -i "/$previous_ip/d" "$PREVIOUS_IP_FILE"
+              fi
+          done
+      fi
+      if ! grep -q "$ip" "$TEMP_WHITELIST_FILE"; then
+          echo "$ip" >> "$TEMP_WHITELIST_FILE"
+          echo "$admin $ip" >> "$PREVIOUS_IP_FILE"
+      fi
+  done < "$ADMINS_FILE"
 
-  # Read the current IPs from Dynamic_Host_Admins.txt
-  CURRENT_IPS=$(cat $DYNAMIC_FILE)
+  # Remove any lines from the temp file that are not in the admins file
+  while read -r line; do
+      admin=$(echo "$line" | cut -d ' ' -f1)
+      ip=$(echo "$line" | cut -d ' ' -f2)
+      if ! grep -q "$admin" "$ADMINS_FILE"; then
+          sed -i "/$ip/d" "$TEMP_WHITELIST_FILE"
+          sed -i "/$ip/d" "$PREVIOUS_IP_FILE"
+      fi
+  done < "$PREVIOUS_IP_FILE"
 
-  # Remove old IPs from whitelist.txt
-  grep -Fvxf $LAST_DYNAMIC_FILE $WHITELIST_FILE > temp && mv temp $WHITELIST_FILE
-
-  # Add the current IPs to whitelist.txt
-  grep -Fxvf $WHITELIST_FILE $DYNAMIC_FILE >> $WHITELIST_FILE
-
-  # Update Last_Dynamic_Host_Admins.txt with the current IPs
-  echo "$CURRENT_IPS" > $LAST_DYNAMIC_FILE
+  # Overwrite the whitelist file with the new IPs
+  cp "$TEMP_WHITELIST_FILE" "$WHITELIST_FILE"
 }
 
 #---------------------------------------------------------------------------
