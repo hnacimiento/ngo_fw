@@ -20,6 +20,7 @@ export PATH="$(sudo -i -u root bash -c 'echo $PATH')"
 #-----------------------------------------------------------------------------------------------------------------
 SCRIPT_NAME=`basename ${BASH_SOURCE[0]}` # Script File Name.
 HOST_NAME=`uname -n` # Hostname.
+UBUNTU_VER=$(grep 'VERSION_ID' /etc/os-release | cut -d '"' -f 2)
 BL_DIR="/var/lib/ngo_fw" # Where we keep some files.
 DOWNLOAD_DIR="$BL_DIR/downloads"
 WHITELIST_FILE="$BL_DIR/whitelist.txt"
@@ -336,7 +337,18 @@ if [ $OPTS = "installpsad" ]; then
     echo -e "install_packages psad\n"
     debconf-set-selections <<< "postfix postfix/main_mailer_type select No configuration"
     install_packages psad
-    update-rc.d psad enable
+
+    # Check the version and execute commands accordingly
+    if [[ $UBUNTU_VER == "20.04" ]]; then
+        update-rc.d psad enable
+    elif [[ $UBUNTU_VER == "22.04" ]]; then
+        sudo systemctl enable psad
+    else
+        echo "You are on an unspecified version of Ubuntu in this script."
+        # You can add commands for other versions or a default behavior
+        exit -1
+    fi
+
     cat <(crontab -l) <(echo "@daily  root  psad --sig-update && psad -H > $BL_DIR/psad_cron_update.log" ) | crontab -
     cp -v /etc/psad/psad.conf /etc/psad/psad.conf.ori
     sed -i "s/EMAIL_ADDRESSES             root@localhost;/EMAIL_ADDRESSES             $MAIL_ADMIN;/" /etc/psad/psad.conf
@@ -394,7 +406,15 @@ if [ $OPTS = "install" ]; then
 
     # Enable the iptables-persistent service.
     echo "update-rc.d iptables-persistent enable"
-    update-rc.d iptables-persistent enable
+    if [[ $UBUNTU_VER == "20.04" ]]; then
+        update-rc.d iptables-persistent enable
+    elif [[ $UBUNTU_VER == "22.04" ]]; then
+        sudo systemctl enable netfilter-persistent
+    else
+        echo "You are on an unspecified version of Ubuntu in this script."
+        # You can add commands for other versions or a default behavior
+        exit -1
+    fi
 
     # Copy the iptables rules files.
     cp -v iptables4 /etc/iptables/rules.v4
@@ -441,7 +461,18 @@ if [ $OPTS = "install" ]; then
     if [ -f "/etc/rc.local" ]; then
       sed -i "\$i /bin/bash /usr/local/bin/ngo_fw.sh loadatboot\n" /etc/rc.local
     else
-      systemctl enable rc-local
+
+      # Check if the rc-local service is already enabled
+      service_status=$(systemctl is-enabled rc-local)
+
+      # If the service is not enabled, enable it
+      if [ "$service_status" != "enabled" ]; then
+          echo "Enabling rc-local service..."
+          sudo systemctl enable rc-local
+      else
+          echo "rc-local service is already enabled."
+      fi
+
       touch /etc/rc.local && chmod +x /etc/rc.local
       echo '#!/bin/bash' > /etc/rc.local
       echo -e "\nexit" >> /etc/rc.local
