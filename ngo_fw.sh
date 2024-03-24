@@ -455,7 +455,7 @@ if [ $OPTS = "install" ]; then
     # Update the crontab to run the script daily.
     echo 'cat <(crontab -l) <(echo "@daily          root    cpulimit -z -l 20 /usr/local/bin/ngo_fw.sh") | crontab -'
     cat <(crontab -l) <(echo "# SECURITY NGO_FW SCRIPT") | crontab -
-    cat <(crontab -l) <(echo "@reboot root  sleep 60 && cpulimit -z -l 20 /usr/local/bin/$SCRIPT_NAME &") | crontab -
+    cat <(crontab -l) <(echo "@daily root  sleep 60 && cpulimit -z -l 20 /usr/local/bin/$SCRIPT_NAME &") | crontab -
     
     # Update the rc.local file to run the script at boot.
     if [ -f "/etc/rc.local" ]; then
@@ -492,16 +492,12 @@ if [ $OPTS = "install" ]; then
           sudo systemctl enable rc-local.service
           #sudo systemctl start rc-local.service
           sudo systemctl status rc-local.service
-
       else
           echo "You are on an unspecified version of Ubuntu in this script."
-          # You can add commands for other versions or a default behavior
           exit -1
       fi
-    exit
    fi
-    cat <(crontab -l) <(echo "@daily  root  cpulimit -z -l 20 /usr/local/bin/$SCRIPT_NAME &") | crontab -
-
+   
     # Configure the rsyslog service to log iptables messages.
     if [ -f /etc/rsyslog.conf ]; then
       if [ -f /etc/rsyslog.d/30-ngo_fw.conf ]; then
