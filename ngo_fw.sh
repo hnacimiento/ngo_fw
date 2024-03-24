@@ -468,8 +468,6 @@ if [ $OPTS = "install" ]; then
 
       # Check the version and execute commands accordingly
       if [[ $UBUNTU_VER == "20.04" ]]; then
-          echo "You are on Ubuntu 20.04. Executing commands for this version..."
-
           # Check if the rc-local service is already enabled
           service_status=$(systemctl is-enabled rc-local)
           # If the service is not enabled, enable it
@@ -492,7 +490,7 @@ if [ $OPTS = "install" ]; then
 
           chmod 644 /etc/systemd/system/rc-local.service
           sudo systemctl enable rc-local.service
-          sudo systemctl start rc-local.service
+          #sudo systemctl start rc-local.service
           sudo systemctl status rc-local.service
 
       else
