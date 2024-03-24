@@ -455,28 +455,51 @@ if [ $OPTS = "install" ]; then
     # Update the crontab to run the script daily.
     echo 'cat <(crontab -l) <(echo "@daily          root    cpulimit -z -l 20 /usr/local/bin/ngo_fw.sh") | crontab -'
     cat <(crontab -l) <(echo "# SECURITY NGO_FW SCRIPT") | crontab -
-    #cat <(crontab -l) <(echo "@reboot root  sleep 60 && cpulimit -z -l 20 /usr/local/bin/$SCRIPT_NAME &") | crontab -
+    cat <(crontab -l) <(echo "@reboot root  sleep 60 && cpulimit -z -l 20 /usr/local/bin/$SCRIPT_NAME &") | crontab -
     
     # Update the rc.local file to run the script at boot.
     if [ -f "/etc/rc.local" ]; then
       sed -i "\$i /bin/bash /usr/local/bin/ngo_fw.sh loadatboot\n" /etc/rc.local
     else
-
-      # Check if the rc-local service is already enabled
-      service_status=$(systemctl is-enabled rc-local)
-
-      # If the service is not enabled, enable it
-      if [ "$service_status" != "enabled" ]; then
-          echo "Enabling rc-local service..."
-          sudo systemctl enable rc-local
-      else
-          echo "rc-local service is already enabled."
-      fi
-
       touch /etc/rc.local && chmod +x /etc/rc.local
       echo '#!/bin/bash' > /etc/rc.local
       echo -e "\nexit" >> /etc/rc.local
       sed -i "\$i /bin/bash /usr/local/bin/ngo_fw.sh loadatboot\n" /etc/rc.local
+
+      # Check the version and execute commands accordingly
+      if [[ $UBUNTU_VER == "20.04" ]]; then
+          echo "You are on Ubuntu 20.04. Executing commands for this version..."
+
+          # Check if the rc-local service is already enabled
+          service_status=$(systemctl is-enabled rc-local)
+          # If the service is not enabled, enable it
+          if [ "$service_status" != "enabled" ]; then
+              echo "Enabling rc-local service..."
+              sudo systemctl enable rc-local
+          else
+              echo "rc-local service is already enabled."
+          fi
+      elif [[ $UBUNTU_VER == "22.04" ]]; then
+          echo '[Unit]
+          Description=Local Startup Script
+
+          [Service]
+          Type=simple
+          ExecStart=/etc/rc.local
+
+          [Install]
+          WantedBy=multi-user.target' >> /etc/systemd/system/rc-local.service
+
+          chmod 644 /etc/systemd/system/rc-local.service
+          sudo systemctl enable rc-local.service
+          sudo systemctl start rc-local.service
+          sudo systemctl status rc-local.service
+
+      else
+          echo "You are on an unspecified version of Ubuntu in this script."
+          # You can add commands for other versions or a default behavior
+          exit -1
+      fi
     exit
    fi
     cat <(crontab -l) <(echo "@daily  root  cpulimit -z -l 20 /usr/local/bin/$SCRIPT_NAME &") | crontab -
